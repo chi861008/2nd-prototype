@@ -1,0 +1,40 @@
+'use client';
+import { useEffect, useSyncExternalStore } from 'react';
+import { initialState, reduce, type Action } from './model';
+import type { PrototypeState } from './types';
+const KEY='counter-study-v1';
+let state=initialState();
+state.order.id='initial';
+state.order.number='—';
+const server=state;
+let initialized=false;
+let channel:BroadcastChannel|null=null;
+const listeners=new Set<()=>void>();
+let error='';
+const notify=()=>listeners.forEach(fn=>fn());
+function accept(raw:unknown){
+ if(!raw||typeof raw!=='object')return;
+ const s=raw as PrototypeState;
+ if(s.version===1&&Array.isArray(s.order?.lines)&&Array.isArray(s.slides)&&s.revision>state.revision){state=s;notify();}
+}
+function init(){
+ if(initialized||typeof window==='undefined')return;
+ initialized=true;
+ try{const raw=localStorage.getItem(KEY);if(raw)accept(JSON.parse(raw));}catch{error='無法讀取本機儲存，請確認瀏覽器允許網站資料。';}
+ if(typeof BroadcastChannel !== 'undefined'){channel=new BroadcastChannel(KEY);channel.onmessage=e=>accept(e.data);}
+ window.addEventListener('storage',e=>{if(e.key===KEY&&e.newValue){try{accept(JSON.parse(e.newValue));}catch{}}});
+ setInterval(()=>dispatch({type:'tick',now:Date.now()}),150);
+ notify();
+}
+export function dispatch(action:Action){
+ const next=reduce(state,action);if(next===state)return;
+ state=next;
+ try{localStorage.setItem(KEY,JSON.stringify(state));error='';}catch{error='本機儲存空間不足：本次變更僅暫存，重新整理可能遺失。請移除上傳圖片。';}
+ channel?.postMessage(state);notify();
+}
+const subscribe=(fn:()=>void)=>{listeners.add(fn);return()=>{listeners.delete(fn);};};
+export function usePrototype(){
+ const value=useSyncExternalStore(subscribe,()=>state,()=>server);
+ useEffect(()=>{init();},[]);
+ return {state:value,dispatch,error};
+}

@@ -1,0 +1,11 @@
+export type TransactionStage = 'idle' | 'ordering' | 'paying' | 'completed';
+export type Modifier = { id: string; name: string; price: number };
+export type Discount = { level: 'item' | 'order'; label: string; amount: number };
+export type ComboChild = { id: string; name: string; specs: string[]; modifiers: Modifier[]; note: string };
+export type OrderLine = { id: string; name: string; price: number; quantity: number; specs: string[]; modifiers: Modifier[]; children: ComboChild[]; note: string; discount?: Discount; complimentary: boolean };
+export type PaymentEntry = { id: string; method: '現金' | '信用卡' | '行動支付'; amount: number };
+export type MemberInfo = { name: string; code: string };
+export type InvoiceIdentity = { type: 'taxId' | 'carrier'; value: string } | null;
+export type MarketingSlide = { id: string; title: string; subtitle: string; seconds: number; image?: string };
+export type Order = { id: string; number: string; lines: OrderLine[]; discount?: Discount; member?: MemberInfo; invoice: InvoiceIdentity; payments: PaymentEntry[] };
+export type PrototypeState = { version: 1; revision: number; stage: TransactionStage; order: Order; slides: MarketingSlide[]; focusId?: string; focusAt: number; deadline: number | null; remaining: number; paused: boolean; scenario: number | null; nextAt: number | null };
