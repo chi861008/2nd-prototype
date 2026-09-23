@@ -38,7 +38,7 @@ export default function Display(){
  <div ref={list} className="order-list">{giftedLines.length>0&&<section className="pinned-gifts" aria-label="招待品項"><div className="pinned-label">招待品項</div>{giftedLines.map(l=><Line key={l.id} line={l} highlight={l.id===s.focusId&&now-s.focusAt<1800}/>)}</section>}<div className="scrollable-lines">{regularLines.length?regularLines.map(l=><Line key={l.id} line={l} highlight={l.id===s.focusId&&now-s.focusAt<1800}/>):!giftedLines.length&&<div className="empty-order"><span>好茶，正在準備中</span><p>加入餐點後，訂單明細將顯示於此。</p></div>}</div></div>
  <footer className="order-summary">
  {(s.order.member||s.order.invoice||t.discount>0)&&<div className="summary-meta"><div className="identity">{s.order.member&&<span>會員 <strong>{s.order.member.name}</strong></span>}{s.order.invoice&&<span>{s.order.invoice.type==='taxId'?'統編':'載具'} <strong>{s.order.invoice.value}</strong></span>}</div>{t.discount>0&&<div className="summary-discount"><span>總折扣</span><strong>−{money(t.discount)}</strong></div>}</div>}
- {s.stage==='paying'&&<div className="payment-strip"><span>已付 {money(t.paid)}</span><span>付款後待付金額</span></div>}
+ {s.stage==='paying'&&<div className="payment-strip"><span>已付 {money(t.paid)}</span><span>待付 {money(t.unpaid)}</span></div>}
  <div className="summary-bottom"><div className="summary-facts"><span>共 <strong>{t.quantity}</strong> 項</span></div><div className="grand-total"><span>{s.stage==='ordering'?'總計':'待付金額'}</span><strong><small>NT$</small>{(s.stage==='paying'?t.unpaid:t.total).toLocaleString('zh-TW')}</strong></div></div>
  </footer></section></main>;
 }
