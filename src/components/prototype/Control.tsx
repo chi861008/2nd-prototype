@@ -1,7 +1,7 @@
 'use client';
-import {useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
-import {usePrototype} from '@/lib/prototype/store';
+import {publishScrollSync,usePrototype} from '@/lib/prototype/store';
 import {catalog,integer,lineTotals,money,scenarioNames,totals,uid} from '@/lib/prototype/model';
 import type {PaymentEntry} from '@/lib/prototype/types';
 import LineEditor from './LineEditor';
@@ -13,8 +13,29 @@ export default function Control({compact=false}:{compact?:boolean}){
  const [method,setMethod]=useState<PaymentEntry['method']>('現金');
  const [amount,setAmount]=useState('100');
  const [message,setMessage]=useState('');
+ const controlList=useRef<HTMLDivElement>(null);
  const t=totals(s.order); const editable=s.stage==='ordering';
  const line=s.order.lines.find(l=>l.id===selected);
+ useEffect(()=>{
+ const box=controlList.current;if(!box||tab!=='pos')return;
+ let lastScrollTop=box.scrollTop;
+ let direction:'UP'|'DOWN'='DOWN';
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ const sendVisibleRange=()=>{
+ const bounds=box.getBoundingClientRect();
+ const visible=Array.from(box.querySelectorAll<HTMLElement>('[data-line-id]')).map(element=>({element,rect:element.getBoundingClientRect()})).filter(({rect})=>rect.bottom>bounds.top+1&&rect.top<bounds.bottom-1).sort((a,b)=>a.rect.top-b.rect.top);
+ const top=visible.at(0)?.element.dataset.lineId;
+ const bottom=visible.at(-1)?.element.dataset.lineId;
+ if(top&&bottom)publishScrollSync({event:'POS_SCROLL_SYNC',direction,top_item_id:top,bottom_item_id:bottom,order_id:s.order.id,sent_at:Date.now()});
+ };
+ const onScroll=()=>{
+ const next=box.scrollTop;
+ if(next!==lastScrollTop){direction=next>lastScrollTop?'DOWN':'UP';lastScrollTop=next;}
+ clearTimeout(timer);timer=setTimeout(sendVisibleRange,130);
+ };
+ box.addEventListener('scroll',onScroll,{passive:true});
+ return()=>{clearTimeout(timer);box.removeEventListener('scroll',onScroll);};
+ },[s.order.id,tab]);
  async function upload(file:File|undefined){
  if(!file)return;
  if(!['image/png','image/jpeg','image/webp'].includes(file.type)){setMessage('請選擇 PNG、JPEG 或 WebP 圖片。');return;}
@@ -30,7 +51,7 @@ export default function Control({compact=false}:{compact?:boolean}){
  <div className="settings-section"><h2>會員與發票</h2><label className="check-label"><input type="checkbox" disabled={!editable} checked={!!s.order.member} onChange={e=>dispatch({type:'order',patch:{member:e.target.checked?{name:'林小姐（測試）',code:'M0001'}:undefined}})}/>使用測試會員</label>{s.order.member&&<p className="muted">{s.order.member.name} · {s.order.member.code}</p>}
  <label>發票識別<select disabled={!editable} value={s.order.invoice?.type??''} onChange={e=>dispatch({type:'order',patch:{invoice:e.target.value?{type:e.target.value as 'taxId'|'carrier',value:e.target.value==='taxId'?'12345675':'/AB12CD3'}:null}})}><option value="">不使用</option><option value="carrier">手機載具</option><option value="taxId">公司統編</option></select></label>{s.order.invoice&&<label>{s.order.invoice.type==='taxId'?'統編':'載具'}內容<input disabled={!editable} value={s.order.invoice.value} onChange={e=>dispatch({type:'order',patch:{invoice:{type:s.order.invoice!.type,value:e.target.value}}})}/></label>}
  <label>整單折扣（NT$）<input disabled={!editable} type="number" min="0" value={s.order.discount?.amount??0} onChange={e=>dispatch({type:'order',patch:{discount:{level:'order',label:'整單優惠',amount:integer(Number(e.target.value))}}})}/></label></div></section>
- <section className="panel current-order"><div className="section-title"><h2>目前訂單 <small>{t.quantity} 項</small></h2><button disabled={!editable} onClick={()=>dispatch({type:'clear'})}>清空</button></div><div className="control-lines">{s.order.lines.length?s.order.lines.map(l=><div className={'control-line '+(selected===l.id?'selected':'')} key={l.id}><div className="control-line-title"><button onClick={()=>{setSelected(selected===l.id?null:l.id);dispatch({type:'focus',id:l.id,now:Date.now()});}}><b>{l.quantity} × {l.name}</b><small>{l.complimentary?'招待':l.specs.join(' / ')}</small></button><strong>{money(lineTotals(l).net)}</strong></div><div className="row-actions"><button onClick={()=>dispatch({type:'focus',id:l.id,now:Date.now()})}>帶看品項</button><button disabled={!editable} onClick={()=>setSelected(selected===l.id?null:l.id)}>{selected===l.id?'收起編輯':'編輯'}</button><button disabled={!editable} onClick={()=>dispatch({type:'delete',id:l.id})}>刪除</button></div>{line?.id===l.id&&editable&&<LineEditor line={line}/>}</div>):<div className="control-empty">尚未加入商品<p>開始新訂單，選一杯好茶。</p></div>}</div><div className="control-total"><span>總計 <small>折扣 −{money(t.discount)}</small></span><strong>{money(t.total)}</strong></div>
+ <section className="panel current-order"><div className="section-title"><h2>目前訂單 <small>{t.quantity} 項</small></h2><button disabled={!editable} onClick={()=>dispatch({type:'clear'})}>清空</button></div><div ref={controlList} className="control-lines">{s.order.lines.length?s.order.lines.map(l=><div data-line-id={l.id} className={'control-line '+(selected===l.id?'selected':'')} key={l.id}><div className="control-line-title"><button onClick={()=>{setSelected(selected===l.id?null:l.id);dispatch({type:'focus',id:l.id,now:Date.now()});}}><b>{l.quantity} × {l.name}</b><small>{l.complimentary?'招待':l.specs.join(' / ')}</small></button><strong>{money(lineTotals(l).net)}</strong></div><div className="row-actions"><button onClick={()=>dispatch({type:'focus',id:l.id,now:Date.now()})}>帶看品項</button><button disabled={!editable} onClick={()=>setSelected(selected===l.id?null:l.id)}>{selected===l.id?'收起編輯':'編輯'}</button><button disabled={!editable} onClick={()=>dispatch({type:'delete',id:l.id})}>刪除</button></div>{line?.id===l.id&&editable&&<LineEditor line={line}/>}</div>):<div className="control-empty">尚未加入商品<p>開始新訂單，選一杯好茶。</p></div>}</div><div className="control-total"><span>總計 <small>折扣 −{money(t.discount)}</small></span><strong>{money(t.total)}</strong></div>
  {s.stage==='ordering'&&<button className="primary wide" disabled={!s.order.lines.length} onClick={()=>dispatch({type:'pay'})}>確認訂單，進入付款 →</button>}
  {s.stage==='paying'&&<section className="payment-controls"><h2>收款</h2><div className="mini-metrics"><span>已付 {money(t.paid)}</span><span>未付 {money(t.unpaid)}</span><span>找零 {money(t.change)}</span></div>{s.order.payments.map(p=><div className="payment-entry" key={p.id}><span>{p.method} {money(p.amount)}</span><button onClick={()=>dispatch({type:'removePayment',id:p.id})}>取消此筆</button></div>)}<div className="field-grid"><label>付款方式<select value={method} onChange={e=>setMethod(e.target.value as PaymentEntry['method'])}>{['現金','信用卡','行動支付'].map(m=><option key={m}>{m}</option>)}</select></label><label>收款金額<input type="number" min="1" value={amount} onChange={e=>setAmount(e.target.value)}/></label></div><button className="wide" disabled={t.unpaid===0} onClick={()=>{const n=integer(Number(amount));if(n<=0||(method!=='現金'&&n>t.unpaid)){setMessage('請輸入正整數；非現金付款不可超過未付金額。');return;}dispatch({type:'payment',payment:{id:uid(),method,amount:n}});}}>加入付款</button><div className="row-actions"><button onClick={()=>dispatch({type:'resetPayments'})}>重設收款</button><button onClick={()=>dispatch({type:'cancelPay'})}>取消付款，回到點餐</button></div><button className="primary wide" disabled={t.unpaid>0} onClick={()=>dispatch({type:'complete',now:Date.now()})}>完成付款</button></section>}
  {s.stage==='completed'&&<p className="notice">付款完成。可立即開始新訂單，中斷返回首頁倒數。</p>}</section></div>:

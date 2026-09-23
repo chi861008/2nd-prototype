@@ -66,3 +66,19 @@ test('storage event fallback synchronizes without BroadcastChannel',async({brows
  const control=await context.newPage();const display=await context.newPage();await control.goto('/control');await display.goto('/display');
  await control.getByRole('button',{name:'開始新訂單',exact:true}).click();await control.getByRole('button',{name:/春摘四季青茶 NT/}).click();await expect(display.locator('.grand-total')).toContainText('40');await context.close();
 });
+test('POS list scroll end aligns the customer display in both directions',async({page,context})=>{
+ await page.goto('/control');
+ const display=await context.newPage();await display.goto('/display');
+ await page.getByRole('button',{name:'研究情境控制台',exact:true}).click();
+ await page.locator('.scenarios button').nth(2).click();
+ await page.getByRole('button',{name:'POS 模擬操作',exact:true}).click();
+ for(let i=0;i<12;i++)await page.getByRole('button',{name:/春摘四季青茶 NT/}).click();
+ await expect(page.locator('.control-line')).toHaveCount(30);
+ await expect(display.locator('.order-line')).toHaveCount(30);
+ await display.locator('.order-list').evaluate(element=>{element.scrollTop=0;});
+ await page.locator('.control-lines').evaluate(element=>{element.scrollTop=element.scrollHeight;element.dispatchEvent(new Event('scroll'));});
+ await expect.poll(()=>display.locator('.order-list').evaluate(element=>element.scrollTop)).toBeGreaterThan(0);
+ await expect.poll(()=>display.locator('.order-line').last().evaluate(element=>{const item=element.getBoundingClientRect();const list=element.closest('.order-list')!.getBoundingClientRect();return item.bottom<=list.bottom+1;})).toBe(true);
+ await page.locator('.control-lines').evaluate(element=>{element.scrollTop=0;element.dispatchEvent(new Event('scroll'));});
+ await expect.poll(()=>display.locator('.order-list').evaluate(element=>element.scrollTop)).toBeLessThan(2);
+});

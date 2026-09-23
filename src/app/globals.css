@@ -106,3 +106,14 @@
 .scrollable-lines{min-height:0}
 .payment-strip{display:flex;justify-content:flex-end;gap:20px;color:#777;font-size:14px;padding:7px 0;border-bottom:1px solid #ddd}
 @media(min-width:900px) and (max-width:1300px){.order-line{padding-top:12px;padding-bottom:12px}.line-detail{line-height:1.4}.line-detail>p{margin-top:3px}.combo-child{margin-top:6px}.transaction-head{padding-bottom:12px}.summary-meta{padding-bottom:8px;margin-bottom:8px}.order-summary{padding-top:10px}}
+
+/* POS scroll sync keeps the customer list readable at every viewport size. */
+.transaction-head,.order-summary{flex:0 0 auto}
+.order-list-shell{position:relative;flex:1 1 auto;min-height:0}
+.order-list-shell .order-list{height:100%}
+.scrollable-lines{display:flex;flex-direction:column}
+.control-line,.order-line{flex-shrink:0;height:auto}
+.order-list-shell::before,.order-list-shell::after{content:"";position:absolute;z-index:4;left:0;right:0;height:24px;pointer-events:none;opacity:0;transition:opacity .15s}
+.order-list-shell::before{top:0;background:linear-gradient(to bottom,rgb(255 255 255 / 92%),transparent)}
+.order-list-shell::after{bottom:0;background:linear-gradient(to top,rgb(255 255 255 / 92%),transparent)}
+.order-list-shell.has-up::before,.order-list-shell.has-down::after{opacity:1}
