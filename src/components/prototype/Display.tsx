@@ -23,6 +23,8 @@ export default function Display(){
  const [now,setNow]=useState(0);
  const list=useRef<HTMLDivElement>(null);
  const t=totals(s.order);
+ const giftedLines=s.order.lines.filter(l=>l.complimentary);
+ const regularLines=s.order.lines.filter(l=>!l.complimentary);
  useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),200);return()=>clearInterval(timer);},[]);
  useEffect(()=>{
  const box=list.current;if(!box)return;
@@ -33,10 +35,10 @@ export default function Display(){
  if(s.stage==='idle')return <main className="customer idle"><Marketing slides={s.slides}/></main>;
  if(s.stage==='completed')return <main className="customer completion"><div className="complete-brand">日常茶事 <span>EVERYDAY TEA</span></div><div className="completed-card"><div className="checkmark" aria-hidden="true">✓</div><p className="eyebrow">THANK YOU</p><h1>付款完成</h1><p className="thanks">謝謝你，讓好茶成為日常。</p><div className="completed-total"><span>訂單總額</span><strong>{money(t.total)}</strong></div><div className="payment-list">{s.order.payments.map(p=><div key={p.id}><span>{p.method}</span><strong>{money(p.amount)}</strong></div>)}</div>{t.change>0&&<div className="change-row"><span>請收好找零</span><strong>{money(t.change)}</strong></div>}<div className="pickup"><span>取餐號碼</span><strong>{s.order.number}</strong><span>請留意叫號</span></div><p className="countdown">{seconds} 秒後返回首頁</p></div></main>;
  return <main className="customer split"><Marketing slides={s.slides}/><section className="transaction"><header className="transaction-head"><div><h1>{s.stage==='ordering'?'確認你的好茶':'正在付款'}</h1></div></header>
- {s.stage==='ordering'?<><div ref={list} className="order-list">{s.order.lines.length?s.order.lines.map(l=><Line key={l.id} line={l} highlight={l.id===s.focusId&&now-s.focusAt<1800}/>):<div className="empty-order"><span>好茶，正在準備中</span><p>加入餐點後，訂單明細將顯示於此。</p></div>}</div></>:
- <div className="paying-body"><p className="payment-intro">{t.unpaid>0?'請依店員指示完成付款':'款項已收齊，正在確認交易。'}</p><div className="payment-list">{s.order.payments.map(p=><div key={p.id}><span>{p.method}</span><strong>{money(p.amount)}</strong></div>)}</div><div className="payment-metrics"><div><span>已付金額</span><strong>{money(t.paid)}</strong></div><div><span>未付金額</span><strong>{money(t.unpaid)}</strong></div></div>{t.change>0&&<div className="change-row"><span>現金找零</span><strong>{money(t.change)}</strong></div>}</div>}
+ <div ref={list} className="order-list">{giftedLines.length>0&&<section className="pinned-gifts" aria-label="招待品項"><div className="pinned-label">招待品項</div>{giftedLines.map(l=><Line key={l.id} line={l} highlight={l.id===s.focusId&&now-s.focusAt<1800}/>)}</section>}<div className="scrollable-lines">{regularLines.length?regularLines.map(l=><Line key={l.id} line={l} highlight={l.id===s.focusId&&now-s.focusAt<1800}/>):!giftedLines.length&&<div className="empty-order"><span>好茶，正在準備中</span><p>加入餐點後，訂單明細將顯示於此。</p></div>}</div></div>
  <footer className="order-summary">
  {(s.order.member||s.order.invoice||t.discount>0)&&<div className="summary-meta"><div className="identity">{s.order.member&&<span>會員 <strong>{s.order.member.name}</strong></span>}{s.order.invoice&&<span>{s.order.invoice.type==='taxId'?'統編':'載具'} <strong>{s.order.invoice.value}</strong></span>}</div>{t.discount>0&&<div className="summary-discount"><span>總折扣</span><strong>−{money(t.discount)}</strong></div>}</div>}
- <div className="summary-bottom"><div className="summary-facts"><span>共 <strong>{t.quantity}</strong> 項</span>{t.giftQuantity>0&&<span>招待 <strong>{t.giftQuantity} 項</strong></span>}</div><div className="grand-total"><span>{s.stage==='ordering'?'總計':'應付金額'}</span><strong><small>NT$</small>{t.total.toLocaleString('zh-TW')}</strong></div></div>
+ {s.stage==='paying'&&<div className="payment-strip"><span>已付 {money(t.paid)}</span><span>付款後待付金額</span></div>}
+ <div className="summary-bottom"><div className="summary-facts"><span>共 <strong>{t.quantity}</strong> 項</span></div><div className="grand-total"><span>{s.stage==='ordering'?'總計':'待付金額'}</span><strong><small>NT$</small>{(s.stage==='paying'?t.unpaid:t.total).toLocaleString('zh-TW')}</strong></div></div>
  </footer></section></main>;
 }
