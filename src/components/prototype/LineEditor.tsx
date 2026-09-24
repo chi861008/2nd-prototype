@@ -7,8 +7,9 @@ function Configuration({specs,modifiers,note,onChange}:{specs:string[];modifiers
 }
 export default function LineEditor({line}:{line:OrderLine}){
  const update=(patch:Partial<OrderLine>)=>dispatch({type:'line',line:{...line,...patch},now:Date.now()});
+ const updateQuantity=(value:number)=>value<1?dispatch({type:'delete',id:line.id}):update({quantity:value});
  return <div className="line-editor"><label>商品名稱<input value={line.name} onChange={e=>update({name:e.target.value})}/></label>
  {line.children.length?line.children.map((c,i)=><fieldset key={c.id}><legend>{c.name}</legend><Configuration {...c} onChange={patch=>update({children:line.children.map((v,j)=>i===j?{...v,...patch}:v)})}/></fieldset>):<Configuration {...line} onChange={update}/>}
- <div>{line.children.length>0&&<label>套餐備註<input value={line.note} placeholder="例如：整組分開裝" onChange={e=>update({note:e.target.value})}/></label>}</div><div className="field-grid"><label>數量<input type="number" min="1" max="99" value={line.quantity} onChange={e=>update({quantity:Number(e.target.value)})}/></label><label>單品折扣（整列金額）<input type="number" min="0" value={line.discount?.amount??0} onChange={e=>update({discount:{level:'item',label:line.children.length?'套餐優惠':'單品優惠',amount:integer(Number(e.target.value))}})}/></label></div><label className="check-label"><input type="checkbox" checked={line.complimentary} onChange={e=>update({complimentary:e.target.checked})}/>招待此品項（實付 0）</label>
+ <div>{line.children.length>0&&<label>套餐備註<input value={line.note} placeholder="例如：整組分開裝" onChange={e=>update({note:e.target.value})}/></label>}</div><div className="field-grid"><label>數量<input type="number" min="1" max="99" value={line.quantity} onChange={e=>updateQuantity(Number(e.target.value))}/></label><label>單品折扣（整列金額）<input type="number" min="0" value={line.discount?.amount??0} onChange={e=>update({discount:{level:'item',label:line.children.length?'套餐優惠':'單品優惠',amount:integer(Number(e.target.value))}})}/></label></div><label className="check-label"><input type="checkbox" checked={line.complimentary} onChange={e=>update({complimentary:e.target.checked})}/>招待此品項（實付 0）</label>
  </div>;
 }

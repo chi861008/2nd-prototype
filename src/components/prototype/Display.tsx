@@ -1,62 +1,11 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {subscribeScrollSync,usePrototype} from '@/lib/prototype/store';
-import {lineTotals,money,totals} from '@/lib/prototype/model';
+import {usePrototype} from '@/lib/prototype/store';
+import {lineTotals,money,totals,ORDER_PAGE_SIZE} from '@/lib/prototype/model';
 import type {OrderLine,Modifier} from '@/lib/prototype/types';
 import Marketing from './Marketing';
-function Mods({items}:{items:Modifier[]}){return items.map(m=><div className="modifier" key={m.id}><span>＋{m.name}</span><span>＋{money(m.price)}</span></div>);}
-function Specifications({specs}:{specs:string[]}){return specs.length?<p>{specs.join('／')}</p>:null;}
-function Line({line,highlight}:{line:OrderLine;highlight:boolean}){
- const t=lineTotals(line);
- return <article id={'customer-line-'+line.id} data-line-id={line.id} className={'order-line '+(highlight?'highlight':'')}>
- <div className="line-main"><span className={line.children.length ? "quantity combo-quantity" : "quantity quantity-box"} aria-label={line.quantity+" 份"}>{line.quantity}{line.children.length>0&&"×"}</span><strong>{line.name}</strong><strong className="line-price">{money(t.net)}</strong></div>
- <div className="line-detail">
- {line.complimentary&&<p className="gift-label">招待 · 原價 {money(t.gross)} · 實付 NT$0</p>}
- <Specifications specs={line.children.length?[]:line.specs}/><Mods items={line.modifiers}/>
- {line.children.map(c=><div className="combo-child" key={c.id}><div className="child-heading"><span className="quantity-box" aria-label="每組 1 份">1</span><strong>{c.name}</strong></div><Specifications specs={c.specs}/><Mods items={c.modifiers}/>{c.note&&<p className="note">備註：{c.note}</p>}</div>)}
- {line.note&&<p className="note">備註：{line.note}</p>}
- {t.discount>0&&<div className="discount-row"><span>{line.discount?.label}</span><strong>−{money(t.discount)}</strong></div>}
- </div></article>;
-}
-export default function Display(){
- const {state:s}=usePrototype();
- const [now,setNow]=useState(0);
- const [overflow,setOverflow]=useState({up:false,down:false});
- const list=useRef<HTMLDivElement>(null);
- const t=totals(s.order);
- const giftedLines=s.order.lines.filter(l=>l.complimentary);
- const regularLines=s.order.lines.filter(l=>!l.complimentary);
- useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),200);return()=>clearInterval(timer);},[]);
- useEffect(()=>{
- const box=list.current;if(!box)return;
- const el=Array.from(box.querySelectorAll<HTMLElement>('[data-line-id]')).find(x=>x.dataset.lineId===s.focusId);
- if(el){const top=el.offsetTop;const bottom=top+el.offsetHeight;box.scrollTo({top:el.offsetHeight>box.clientHeight?top:Math.max(0,bottom-box.clientHeight),behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});}
- },[s.focusAt,s.focusId,s.stage]);
- useEffect(()=>subscribeScrollSync(event=>{
- if(event.order_id!==s.order.id)return;
- const id=event.direction==='DOWN'?event.bottom_item_id:event.top_item_id;
- requestAnimationFrame(()=>{
- const el=document.getElementById('customer-line-'+id);
- if(!el||!list.current?.contains(el))return;
- el.scrollIntoView({block:event.direction==='DOWN'?'end':'start',inline:'nearest',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
- });
- }),[s.order.id]);
- useEffect(()=>{
- const box=list.current;if(!box)return;
- let frame=0;
- const update=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>setOverflow({up:box.scrollTop>1,down:box.scrollTop+box.clientHeight<box.scrollHeight-1}));};
- box.addEventListener('scroll',update,{passive:true});
- const observer=new ResizeObserver(update);observer.observe(box);update();
- return()=>{cancelAnimationFrame(frame);observer.disconnect();box.removeEventListener('scroll',update);};
- },[s.order.lines,s.stage]);
- const seconds=Math.min(5,Math.max(0,Math.ceil((s.paused?s.remaining:(s.deadline??now)-now)/1000)));
- if(s.stage==='idle')return <main className="customer idle"><Marketing slides={s.slides}/></main>;
- if(s.stage==='completed')return <main className="customer completion"><div className="complete-brand">日常茶事 <span>EVERYDAY TEA</span></div><div className="completed-card"><div className="checkmark" aria-hidden="true">✓</div><p className="eyebrow">THANK YOU</p><h1>付款完成</h1><p className="thanks">謝謝你，讓好茶成為日常。</p><div className="completed-total"><span>訂單總額</span><strong>{money(t.total)}</strong></div><div className="payment-list">{s.order.payments.map(p=><div key={p.id}><span>{p.method}</span><strong>{money(p.amount)}</strong></div>)}</div>{t.change>0&&<div className="change-row"><span>請收好找零</span><strong>{money(t.change)}</strong></div>}<div className="pickup"><span>取餐號碼</span><strong>{s.order.number}</strong><span>請留意叫號</span></div><p className="countdown">{seconds} 秒後返回首頁</p></div></main>;
- return <main className="customer split"><Marketing slides={s.slides}/><section className="transaction"><header className="transaction-head"><div><h1>{s.stage==='ordering'?'確認你的好茶':'正在付款'}</h1></div></header>
- <div className={'order-list-shell '+(overflow.up?'has-up ':'')+(overflow.down?'has-down':'')}><div ref={list} className="order-list">{giftedLines.length>0&&<section className="pinned-gifts" aria-label="招待品項">{giftedLines.map(l=><Line key={l.id} line={l} highlight={l.id===s.focusId&&now-s.focusAt<1800}/>)}</section>}<div className="scrollable-lines">{regularLines.length?regularLines.map(l=><Line key={l.id} line={l} highlight={l.id===s.focusId&&now-s.focusAt<1800}/>):!giftedLines.length&&<div className="empty-order"><span>好茶，正在準備中</span><p>加入餐點後，訂單明細將顯示於此。</p></div>}</div></div></div>
- <footer className="order-summary">
- {(s.order.member||s.order.invoice||t.discount>0)&&<div className="summary-meta"><div className="identity">{s.order.member&&<span>會員 <strong>{s.order.member.name}</strong></span>}{s.order.invoice&&<span>{s.order.invoice.type==='taxId'?'統編':'載具'} <strong>{s.order.invoice.value}</strong></span>}</div>{t.discount>0&&<div className="summary-discount"><span>總折扣</span><strong>−{money(t.discount)}</strong></div>}</div>}
- {s.stage==='paying'&&<div className="payment-strip"><span>已付 {money(t.paid)}</span><span>待付 {money(t.unpaid)}</span></div>}
- <div className="summary-bottom"><div className="summary-facts"><span>共 <strong>{t.quantity}</strong> 項</span></div><div className="grand-total"><span>{s.stage==='ordering'?'總計':'待付金額'}</span><strong><small>NT$</small>{(s.stage==='paying'?t.unpaid:t.total).toLocaleString('zh-TW')}</strong></div></div>
- </footer></section></main>;
-}
+const text=(v:string)=>v.replace(/\\u([0-9A-Fa-f]{4})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));
+function sizeLabel(specs:string[]){const size=specs.find(s=>s==='\u5927\u676F'||s==='\u4E2D\u676F'||s==='\u5C0F\u676F');return size?({'\u5927\u676F':'L','\u4E2D\u676F':'M','\u5C0F\u676F':'S'} as Record<string,string>)[size]:'';}
+function Options({specs,modifiers}:{specs:string[];modifiers:Modifier[]}){const items=[...specs,...modifiers.map(m=>m.name+'(+'+m.price+')')];return items.length?<p className="modifier-line">{items.join(' / ')}</p>:null;}
+function Line({line,highlight}:{line:OrderLine;highlight:boolean}){const t=lineTotals(line);const size=sizeLabel(line.specs);return <article data-line-id={line.id} className={'order-line '+(highlight?'highlight ':'')+(line.complimentary?'gifted':'')}><div className="line-main"><span className={line.children.length?'quantity combo-quantity':'quantity quantity-box'} aria-label="quantity">{line.quantity}{line.children.length>0&&'x'}</span><strong>{line.complimentary&&<span className="gift-label">{'\u62DB\u5F85'}</span>} {line.name}{size&&' - '+size}</strong><strong className="line-price">{money(t.net)}</strong></div><div className="line-detail"><Options specs={line.children.length?[]:line.specs.slice(size?1:0)} modifiers={line.modifiers}/>{line.children.map(c=><div className="combo-child" key={c.id}><div className="child-heading"><span className="quantity-box">1</span><strong>{c.name}{sizeLabel(c.specs)&&' - '+sizeLabel(c.specs)}</strong></div><Options specs={c.specs.slice(sizeLabel(c.specs)?1:0)} modifiers={c.modifiers}/>{c.note&&<p className="note">{'\u5099\u8A3B\uFF1A'}{c.note}</p>}</div>)}{line.note&&<p className="note">{'\u5099\u8A3B\uFF1A'}{line.note}</p>}{t.discount>0&&<div className="item-discount-row"><span className="customer-discount-icon">◇</span><strong>{line.discount?.label||"單品折扣"}</strong><b>-{money(t.discount)}</b></div>}</div></article>;}
+export default function Display(){const {state:s}=usePrototype();const list=useRef<HTMLDivElement>(null);const firstPageRender=useRef(true);const t=totals(s.order);const giftedLines:OrderLine[]=[];const allOrderLines=s.order.lines;const regularLines=allOrderLines;useEffect(()=>{const box=list.current;if(!box)return;const el=Array.from(box.querySelectorAll<HTMLElement>('[data-line-id]')).find(x=>x.dataset.lineId===s.focusId);if(el)box.scrollTo({top:Math.max(0,el.offsetTop+el.offsetHeight-box.clientHeight),behavior:'smooth'});},[s.focusAt,s.focusId,s.stage]);useEffect(()=>{const box=list.current;if(!box)return;const initial=firstPageRender.current;firstPageRender.current=false;if(!initial&&s.focusId)return;const anchor=allOrderLines[Math.min((s.page-1)*ORDER_PAGE_SIZE,Math.max(0,allOrderLines.length-1))];const el=anchor?box.querySelector<HTMLElement>('[data-line-id="'+anchor.id+'"]'):null;const top=el?el.offsetTop:0;box.scrollTo({top:Math.max(0,top-8),behavior:'smooth'});},[s.page,s.focusId,allOrderLines]);const seconds=Math.min(5,Math.max(0,Math.ceil((s.paused?s.remaining:(s.deadline??Date.now())-Date.now())/1000)));if(s.stage==='idle')return <main className="customer idle"><Marketing slides={s.slides}/></main>;const paymentWaiting=s.stage==='paying'&&s.order.payments.some(p=>p.method!=='現金');if(s.stage==='completed')return <main className="customer completion"><Marketing slides={s.slides}/><div className="completed-card"><p className="eyebrow">THANK YOU</p><h1>{'\u4ED8\u6B3E\u5B8C\u6210'}</h1><p className="thanks">{'\u8B1D\u8B1D\u60A8\u7684\u5149\u81E8'}</p><div className="completed-total"><span>{'\u8A02\u55AE\u7E3D\u984D'}</span><strong>{money(t.total)}</strong></div>{t.change>0&&<div className="change-row"><span>{'\u627E\u96F6'}</span><strong>{money(t.change)}</strong></div>}{s.order.number&&<div className="pickup"><span>{'\u53D6\u9910\u865F\u78BC'}</span><strong>{s.order.number}</strong></div>}<p className="countdown">{seconds} {'\u79D2\u5F8C\u8FD4\u56DE'}</p></div></main>;return <main className="customer split"><Marketing slides={s.slides}/><section className="transaction"><div className="order-list">{giftedLines.length>0&&<section className="pinned-gifts" aria-label="gifted">{giftedLines.map(l=><Line key={l.id} line={l} highlight={l.id===s.focusId}/>)}</section>}<div ref={list} className="scrollable-lines">{regularLines.length?regularLines.map(l=><Line key={l.id} line={l} highlight={l.id===s.focusId}/>):!giftedLines.length&&<div className="empty-order"><span>{'\u76EE\u524D\u6C92\u6709\u9910\u9EDE'}</span><p>{'\u8ACB\u7B49\u5F85\u5E97\u54E1\u52A0\u5165\u9910\u9EDE'}</p></div>}</div>{t.orderDiscount>0&&<div className="customer-discount-row"><div className="customer-discount-meta">整單折扣 - 1 項</div><div className="customer-discount-main"><span className="customer-discount-icon">◇</span><strong>{s.order.discount?.label||"整單折扣"}</strong><b>-{money(t.orderDiscount)}</b></div></div>}</div><footer className="order-summary"><div className="summary-meta"><div className="identity">{s.order.member&&<span>{'會員'} <strong>{s.order.member.name}</strong></span>}{s.order.invoice&&<span>{s.order.invoice.type==='taxId'? '統編':'載具'} <strong>{s.order.invoice.value}</strong></span>}</div><div className="summary-breakdown"><span>小計 <strong>{money(t.subtotal)}</strong></span>{t.serviceFee>0&&<span>服務費 <strong>{money(t.serviceFee)}</strong></span>}{t.discount>0&&<span className="summary-discount-line">總折扣 <strong>-{money(t.discount)}</strong></span>}</div></div><div className="summary-bottom"><div className="summary-facts"><span>{'共'} <strong>{t.quantity}</strong> {'項'}</span></div><div className="grand-total"><span>{t.paid>0?'待付金額':'總計'}</span><strong><small>$</small>{(t.paid>0?t.unpaid:t.total).toLocaleString('zh-TW')}</strong></div></div></footer>{paymentWaiting&&<div className="payment-overlay"><div className="payment-wait-card"><div className="payment-spinner">…</div><h1>付款進行中</h1><p>請稍候</p></div></div>}</section></main>;}
