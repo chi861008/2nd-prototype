@@ -82,7 +82,7 @@ export function reduce(s:PrototypeState,a:Action):PrototypeState {
  case 'line':if(editable){const order={...s.order,lines:s.order.lines.map(l=>l.id===a.line.id?{...a.line,quantity:Math.max(1,Math.min(99,integer(a.line.quantity)))}:l)};n={...s,order,page:Math.min(s.page,pageCount(order)),focusId:a.line.id,focusAt:a.now};}break;
  case 'delete':if(editable){const order={...s.order,lines:s.order.lines.filter(l=>l.id!==a.id)};n={...s,order,page:Math.min(s.page,pageCount(order))};}break;
  case 'focus':n={...s,focusId:a.id,focusAt:a.now};break;
- case 'order':if(editable)n={...s,order:{...s.order,...a.patch}};break;
+ case 'order':if(editable||s.stage==='paying')n={...s,order:{...s.order,...a.patch}};break;
  case 'pay':if(editable&&s.order.lines.length)n={...s,stage:'paying'};break;
  case 'cancelPay':if(s.stage==='paying')n={...s,stage:'ordering',order:{...s.order,payments:[]}};break;
  case 'payment':{const t=totals(s.order);const p={...a.payment,amount:integer(a.payment.amount)};if((s.stage==='paying'||s.stage==='ordering')&&t.unpaid>0&&p.amount>0&&(p.method==='現金'||p.amount<=t.unpaid))n={...s,stage:'paying',order:{...s.order,payments:[...s.order.payments,p]}};break;}

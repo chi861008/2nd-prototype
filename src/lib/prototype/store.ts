@@ -3,6 +3,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { initialState, pageCount, reduce, type Action } from './model';
 import type { PrototypeState } from './types';
 const KEY='counter-study-v1';
+const AD_CLEANUP_KEY='counter-study-v1-default-ads-cleaned';
 let state=initialState();
 state.order.id='initial';
 state.order.number='—';
@@ -20,7 +21,7 @@ function accept(raw:unknown){
 function init(){
  if(initialized||typeof window==='undefined')return;
  initialized=true;
- try{const raw=localStorage.getItem(KEY);if(raw)accept(JSON.parse(raw));}catch{error='無法讀取本機儲存，請確認瀏覽器允許網站資料。';}
+ try{const raw=localStorage.getItem(KEY);if(raw)accept(JSON.parse(raw));if(!localStorage.getItem(AD_CLEANUP_KEY)){const clean=state.slides.filter(slide=>!slide.image);if(clean.length!==state.slides.length){state={...state,slides:clean,revision:Date.now()};localStorage.setItem(KEY,JSON.stringify(state));}localStorage.setItem(AD_CLEANUP_KEY,'1');}}catch{error='無法讀取本機儲存，請確認瀏覽器允許網站資料。';}
  if(typeof BroadcastChannel !== 'undefined'){channel=new BroadcastChannel(KEY);channel.onmessage=e=>accept(e.data);}
  window.addEventListener('storage',e=>{if(e.key===KEY&&e.newValue){try{accept(JSON.parse(e.newValue));}catch{}}});
  setInterval(()=>dispatch({type:'tick',now:Date.now()}),150);
