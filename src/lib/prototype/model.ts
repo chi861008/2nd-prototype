@@ -78,7 +78,7 @@ export function reduce(s:PrototypeState,a:Action):PrototypeState {
  case 'page':n={...s,page:Math.max(1,Math.min(pageCount(s.order),integer(a.page))),focusId:undefined};break;
  case 'clear':if(editable)n={...s,order:{...emptyOrder(),id:s.order.id,number:s.order.number},page:1};break;
  case 'scenario':n=scenario(a.index,s,a.now);break;
- case 'add':if(editable){const l=newLine(a.index);const order={...s.order,lines:[...s.order.lines,l]};n={...s,order,page:pageCount(order),focusId:l.id,focusAt:a.now};}break;
+ case 'add':if(editable||s.stage==='completed'||s.stage==='idle'){const l=newLine(a.index);const base=(s.stage==='completed'||s.stage==='idle')?{...emptyOrder(),id:s.order.id}:s.order;const order={...base,lines:[...base.lines,l]};n={...s,stage:'ordering',completedOrder:undefined,order,page:pageCount(order),focusId:l.id,focusAt:a.now};}break;
  case 'line':if(editable){const order={...s.order,lines:s.order.lines.map(l=>l.id===a.line.id?{...a.line,quantity:Math.max(1,Math.min(99,integer(a.line.quantity)))}:l)};n={...s,order,page:Math.min(s.page,pageCount(order)),focusId:a.line.id,focusAt:a.now};}break;
  case 'delete':if(editable){const order={...s.order,lines:s.order.lines.filter(l=>l.id!==a.id)};n={...s,order,page:Math.min(s.page,pageCount(order))};}break;
  case 'focus':n={...s,focusId:a.id,focusAt:a.now};break;
@@ -88,7 +88,7 @@ export function reduce(s:PrototypeState,a:Action):PrototypeState {
  case 'payment':{const t=totals(s.order);const p={...a.payment,amount:integer(a.payment.amount)};if((s.stage==='paying'||s.stage==='ordering')&&t.unpaid>0&&p.amount>0&&(p.method==='現金'||p.amount<=t.unpaid))n={...s,stage:'paying',order:{...s.order,payments:[...s.order.payments,p]}};break;}
  case 'removePayment':if(s.stage==='paying')n={...s,order:{...s.order,payments:s.order.payments.filter(p=>p.id!==a.id)}};break;
  case 'resetPayments':if(s.stage==='paying')n={...s,order:{...s.order,payments:[]}};break;
- case 'complete':if(s.stage==='paying'&&totals(s.order).unpaid===0)n={...s,stage:'completed',deadline:a.now+5000,remaining:5000,paused:false};break;
+ case 'complete':if(s.stage==='paying'&&totals(s.order).unpaid===0)n={...s,stage:'completed',completedOrder:s.order,order:{...emptyOrder(),id:s.order.id,number:s.order.number},deadline:a.now+5000,remaining:5000,paused:false};break;
  case 'pause':if(s.stage==='completed')n=s.paused?{...s,paused:false,deadline:a.now+s.remaining}:{...s,paused:true,remaining:Math.max(0,(s.deadline??a.now)-a.now),deadline:null};break;
  case 'tick':if(s.stage==='completed'&&!s.paused){if(s.nextAt&&a.now>=s.nextAt)n={...reduce(s,{type:'new'}),order:{...emptyOrder(),lines:[newLine(0)]}};else if(s.deadline&&a.now>=s.deadline)n={...s,stage:'idle',deadline:null,nextAt:null};}break;
  case 'pinGifts':n={...s,pinComplimentary:a.value};break;

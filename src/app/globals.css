@@ -216,3 +216,10 @@
 /* Final pickup-number alignment: one layout rule, centered in both axes. */
 .completion .pickup{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important;box-sizing:border-box!important}
 .completion .pickup>span,.completion .pickup>strong{display:block;width:100%;text-align:center!important}
+
+.quick-pay button.selected{background:#d6d6d6;border-color:#999;box-shadow:inset 0 1px 2px rgba(0,0,0,.12)}.payment-methods button{background:#fff!important}.payment-methods button:hover{background:#f3f3f3!important}
+
+/* Customer summary: equal columns and shared row rhythm. */
+.customer.split .order-summary .summary-meta{grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:24px;align-items:start}
+.customer.split .order-summary .identity{display:grid;align-content:start;gap:8px;padding-bottom:0;margin-bottom:0;border-bottom:0;line-height:20px}
+.customer.split .order-summary .summary-breakdown{display:grid;align-content:start;gap:8px;line-height:20px}

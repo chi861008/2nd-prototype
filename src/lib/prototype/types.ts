@@ -8,4 +8,4 @@ export type MemberInfo = { name: string; code: string };
 export type InvoiceIdentity = { type: 'taxId' | 'carrier'; value: string } | null;
 export type MarketingSlide = { id: string; title: string; subtitle: string; seconds: number; image?: string };
 export type Order = { id: string; number: string; lines: OrderLine[]; discount?: Discount; serviceFee?: number; member?: MemberInfo; invoice: InvoiceIdentity; payments: PaymentEntry[] };
-export type PrototypeState = { version: 1; revision: number; stage: TransactionStage; order: Order; page: number; pinComplimentary: boolean; slides: MarketingSlide[]; focusId?: string; focusAt: number; deadline: number | null; remaining: number; paused: boolean; scenario: number | null; nextAt: number | null };
+export type PrototypeState = { version: 1; revision: number; stage: TransactionStage; order: Order; page: number; pinComplimentary: boolean; slides: MarketingSlide[]; focusId?: string; focusAt: number; deadline: number | null; remaining: number; paused: boolean; scenario: number | null; nextAt: number | null; completedOrder?: Order };
