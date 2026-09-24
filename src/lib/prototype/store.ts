@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useSyncExternalStore } from 'react';
-import { initialState, reduce, type Action } from './model';
+import { initialState, pageCount, reduce, type Action } from './model';
 import type { PrototypeState } from './types';
 const KEY='counter-study-v1';
 let state=initialState();
@@ -15,7 +15,7 @@ const notify=()=>listeners.forEach(fn=>fn());
 function accept(raw:unknown){
  if(!raw||typeof raw!=='object')return;
  const s=raw as PrototypeState;
- if(s.version===1&&Array.isArray(s.order?.lines)&&Array.isArray(s.slides)&&s.revision>state.revision){state=s;notify();}
+ if(s.version===1&&Array.isArray(s.order?.lines)&&Array.isArray(s.slides)&&s.revision>state.revision){state={...s,pinComplimentary:Boolean((s as PrototypeState).pinComplimentary),page:Math.max(1,Math.min(pageCount(s.order),typeof s.page==='number'?s.page:1))};notify();}
 }
 function init(){
  if(initialized||typeof window==='undefined')return;
