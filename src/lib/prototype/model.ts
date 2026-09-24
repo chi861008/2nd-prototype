@@ -35,9 +35,10 @@ export function totals(o: Order) {
  const rows=o.lines.map(lineTotals);
  const subtotal=rows.reduce((a,l)=>a+l.net,0);
  const orderDiscount=Math.min(subtotal,integer(o.discount?.amount ?? 0));
- const total=subtotal-orderDiscount;
+ const serviceFee=integer(o.serviceFee ?? 0);
+ const total=Math.max(0,subtotal+serviceFee-orderDiscount);
  const paid=o.payments.reduce((a,p)=>a+p.amount,0);
- return {total, paid, unpaid:Math.max(0,total-paid), change:Math.max(0,paid-total), orderDiscount,
+ return {subtotal, serviceFee, total, paid, unpaid:Math.max(0,total-paid), change:Math.max(0,paid-total), orderDiscount,
  discount:orderDiscount+rows.reduce((a,l)=>a+l.discount,0), quantity:o.lines.reduce((a,l)=>a+l.quantity,0),
  giftQuantity:o.lines.filter(l=>l.complimentary).reduce((a,l)=>a+l.quantity,0),
  giftValue:o.lines.filter(l=>l.complimentary).reduce((a,l)=>a+lineTotals(l).gross,0)};
@@ -46,7 +47,7 @@ export type Action =
  | {type:'new'} | {type:'idle'} | {type:'reset'} | {type:'clear'} | {type:'pay'} | {type:'complete'; now:number}
  | {type:'tick'; now:number} | {type:'pause'; now:number} | {type:'scenario'; index:number; now:number}
  | {type:'add'; index:number; now:number} | {type:'line'; line:OrderLine; now:number} | {type:'delete'; id:string}
- | {type:'focus'; id:string; now:number} | {type:'page'; page:number} | {type:'order'; patch:Partial<Pick<Order,'member'|'invoice'|'discount'>>}
+ | {type:'focus'; id:string; now:number} | {type:'page'; page:number} | {type:'order'; patch:Partial<Pick<Order,'member'|'invoice'|'discount'|'serviceFee'>>}
  | {type:'payment'; payment:PaymentEntry} | {type:'removePayment'; id:string} | {type:'resetPayments'} | {type:'cancelPay'}
  | {type:'pinGifts'; value:boolean} | {type:'slides'; slides:MarketingSlide[]};
 export const scenarioNames = ['點餐前行銷輪播','一般短訂單','18 個品項的長訂單','超長商品名稱與折行','多層套餐與多個加料','會員＋載具','會員＋統編','單品與整單折扣','招待品項','混合支付進行中','現金溢付與找零','付款完成與倒數','倒數期間開始下一筆'];
@@ -84,7 +85,7 @@ export function reduce(s:PrototypeState,a:Action):PrototypeState {
  case 'order':if(editable)n={...s,order:{...s.order,...a.patch}};break;
  case 'pay':if(editable&&s.order.lines.length)n={...s,stage:'paying'};break;
  case 'cancelPay':if(s.stage==='paying')n={...s,stage:'ordering',order:{...s.order,payments:[]}};break;
- case 'payment':{const t=totals(s.order);const p={...a.payment,amount:integer(a.payment.amount)};if(s.stage==='paying'&&t.unpaid>0&&p.amount>0&&(p.method==='現金'||p.amount<=t.unpaid))n={...s,order:{...s.order,payments:[...s.order.payments,p]}};break;}
+ case 'payment':{const t=totals(s.order);const p={...a.payment,amount:integer(a.payment.amount)};if((s.stage==='paying'||s.stage==='ordering')&&t.unpaid>0&&p.amount>0&&(p.method==='現金'||p.amount<=t.unpaid))n={...s,stage:'paying',order:{...s.order,payments:[...s.order.payments,p]}};break;}
  case 'removePayment':if(s.stage==='paying')n={...s,order:{...s.order,payments:s.order.payments.filter(p=>p.id!==a.id)}};break;
  case 'resetPayments':if(s.stage==='paying')n={...s,order:{...s.order,payments:[]}};break;
  case 'complete':if(s.stage==='paying'&&totals(s.order).unpaid===0)n={...s,stage:'completed',deadline:a.now+5000,remaining:5000,paused:false};break;
