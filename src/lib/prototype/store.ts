@@ -4,6 +4,10 @@ import { initialState, pageCount, reduce, type Action } from './model';
 import type { PrototypeState } from './types';
 const KEY='counter-study-v1';
 const AD_CLEANUP_KEY='counter-study-v1-default-ads-cleaned';
+const SCROLL_KEY=KEY+':scroll-sync';
+export type PosScrollSyncEvent={event:'POS_SCROLL_SYNC';direction:'UP'|'DOWN';top_item_id:string;bottom_item_id:string;order_id:string;sent_at:number};
+let scrollChannel:BroadcastChannel|null=null;
+const scrollListeners=new Set<(event:PosScrollSyncEvent)=>void>();
 let state=initialState();
 state.order.id='initial';
 state.order.number='—';
@@ -22,8 +26,8 @@ function init(){
  if(initialized||typeof window==='undefined')return;
  initialized=true;
  try{const raw=localStorage.getItem(KEY);if(raw)accept(JSON.parse(raw));if(!localStorage.getItem(AD_CLEANUP_KEY)){const clean=state.slides.filter(slide=>!slide.image);if(clean.length!==state.slides.length){state={...state,slides:clean,revision:Date.now()};localStorage.setItem(KEY,JSON.stringify(state));}localStorage.setItem(AD_CLEANUP_KEY,'1');}}catch{error='無法讀取本機儲存，請確認瀏覽器允許網站資料。';}
- if(typeof BroadcastChannel !== 'undefined'){channel=new BroadcastChannel(KEY);channel.onmessage=e=>accept(e.data);}
- window.addEventListener('storage',e=>{if(e.key===KEY&&e.newValue){try{accept(JSON.parse(e.newValue));}catch{}}});
+ if(typeof BroadcastChannel !== 'undefined'){channel=new BroadcastChannel(KEY);channel.onmessage=e=>accept(e.data);scrollChannel=new BroadcastChannel(SCROLL_KEY);scrollChannel.onmessage=e=>receiveScroll(e.data);}
+ window.addEventListener('storage',e=>{if(e.key===KEY&&e.newValue){try{accept(JSON.parse(e.newValue));}catch{}}if(e.key===SCROLL_KEY&&e.newValue){try{receiveScroll(JSON.parse(e.newValue));}catch{}}});
  setInterval(()=>dispatch({type:'tick',now:Date.now()}),150);
  notify();
 }
@@ -33,6 +37,10 @@ export function dispatch(action:Action){
  try{localStorage.setItem(KEY,JSON.stringify(state));error='';}catch{error='本機儲存空間不足：本次變更僅暫存，重新整理可能遺失。請移除上傳圖片。';}
  channel?.postMessage(state);notify();
 }
+
+function receiveScroll(raw:unknown){if(!raw||typeof raw!=='object')return;const e=raw as Partial<PosScrollSyncEvent>;if(e.event!=='POS_SCROLL_SYNC'||!e.top_item_id||!e.bottom_item_id||!e.order_id)return;scrollListeners.forEach(fn=>fn(e as PosScrollSyncEvent));}
+export function publishScrollSync(event:Omit<PosScrollSyncEvent,'event'|'sent_at'>){init();const payload:PosScrollSyncEvent={event:'POS_SCROLL_SYNC',...event,sent_at:Date.now()};try{localStorage.setItem(SCROLL_KEY,JSON.stringify(payload));}catch{}scrollChannel?.postMessage(payload);}
+export function subscribeScrollSync(fn:(event:PosScrollSyncEvent)=>void){init();scrollListeners.add(fn);return()=>{scrollListeners.delete(fn);};}
 const subscribe=(fn:()=>void)=>{listeners.add(fn);return()=>{listeners.delete(fn);};};
 export function usePrototype(){
  const value=useSyncExternalStore(subscribe,()=>state,()=>server);

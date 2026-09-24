@@ -205,3 +205,14 @@
 .completion .completed-total,.completion .change-row{display:grid;grid-template-columns:minmax(0,1fr) 110px;column-gap:10px;align-items:baseline}.completion .completed-total{margin:8px 0 0!important}.completion .change-row{margin:0!important;padding:0 20px!important}.completion .completed-total>span,.completion .change-row>span{text-align:left}.completion .completed-total>strong,.completion .change-row>strong{justify-self:end;text-align:right;min-width:110px}
 /* Completion screen matches the compact customer-display reference. */
 .completion .completed-card{width:min(330px,calc(100% - 40px));min-height:282px;padding:16px 22px;border-radius:12px}.completion .completed-card .eyebrow{font-size:9px;letter-spacing:2px}.completion .completed-card h1{font-size:28px;line-height:1.2;margin:8px 0}.completion .completed-card .thanks{font-size:11px}.completion .completed-total{grid-template-columns:minmax(0,1fr) 110px;margin:20px 0 0!important}.completion .completed-total>span{font-size:16px}.completion .completed-total>strong{font-size:34px;min-width:110px}.completion .change-row{grid-template-columns:minmax(0,1fr) 110px;margin:0!important;padding:0 20px!important}.completion .change-row>span{font-size:16px}.completion .change-row>strong{font-size:30px;min-width:110px}.completion .pickup{width:150px;min-height:80px;margin:12px auto 0;padding:6px 12px 10px;border-radius:12px}.completion .pickup span{font-size:14px}.completion .pickup strong{font-size:34px}
+/* Scroll sync layout: only the customer item zone scrolls; cards keep their natural height. */
+.customer.split .scrollable-lines{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none}.customer.split .scrollable-lines::-webkit-scrollbar{display:none}.customer.split .order-line{flex-shrink:0;height:auto}.customer.split .order-list{min-height:0;display:flex;flex-direction:column;overflow:hidden}.customer.split .scrollable-lines{position:relative}
+.completion .pickup{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box}
+
+/* Payment controls use one readable option size at the 1024px POS viewport. */
+.payment-entry-panel select,.payment-entry-panel button,.payment-entry-panel input{font-size:14px}
+.payment-entry-panel select{font-family:inherit}
+
+/* Final pickup-number alignment: one layout rule, centered in both axes. */
+.completion .pickup{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important;box-sizing:border-box!important}
+.completion .pickup>span,.completion .pickup>strong{display:block;width:100%;text-align:center!important}
